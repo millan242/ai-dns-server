@@ -39,7 +39,7 @@ const handlers = {
     // Math calculations
     calc: (query) => {
         try {
-            const expression = query.replace(/calc\./i, '').split('.').join(' ') // query.replace(/calc\./i, '') - Removes the calc. prefix(case-insensitive) using regex
+            const expression = query.replace(/calc\./i, '').split('.').join(' ')
             const result = evaluate(expression)
             return { answer: `${expression} = ${result}`, cached: false, handler: 'calc' }
         } catch (error) {
@@ -64,11 +64,59 @@ const handlers = {
         return await callAI(prompt, 'code')
     },
 
-    // IP lookup for locations
-    ip: async (query) => {
-        const location = query.replace(/ip\./i, '').split('.').join(' ')
-        const prompt = `What is a common public DNS server IP for ${location}? Reply with ONLY the IP address.`
-        return await callAI(prompt, 'ip')
+    // Timezone lookup
+    timezone: async (query) => {
+        const location = query.replace(/timezone\./i, '').split('.').join(' ')
+        const prompt = `What is the current timezone for ${location}? Reply with timezone name and UTC offset only (e.g., "EST UTC-5").`
+        return await callAI(prompt, 'timezone')
+    },
+
+    // Currency conversion
+    convert: async (query) => {
+        const parts = query.replace(/convert\./i, '').split('.')
+        const [amount, from, to] = parts
+        const prompt = `Convert ${amount} ${from} to ${to}. Reply with just the converted amount and currency (e.g., "100 USD = 85 EUR").`
+        return await callAI(prompt, 'conversion')
+    },
+
+    // Quick spelling check
+    spell: async (query) => {
+        const word = query.replace(/spell\./i, '').split('.').join(' ')
+        const prompt = `Is "${word}" spelled correctly? If not, provide the correct spelling. Reply in format: "Correct" or "Incorrect: [correct spelling]".`
+        return await callAI(prompt, 'spell')
+    },
+
+    // Historical events
+    onthisday: async (query) => {
+        const date = query.replace(/onthisday\./i, '').split('.').join(' ')
+        const prompt = `What significant event happened on ${date}? Reply with one brief historical fact.`
+        return await callAI(prompt, 'history')
+    },
+
+    // Quick unit conversions
+    unit: (query) => {
+        try {
+            const input = query.replace(/unit\./i, '').split('.').join(' ')
+            // mathjs supports unit conversions!
+            const result = evaluate(input)
+            return { answer: `${input} = ${result}`, cached: false, handler: 'unit' }
+        } catch (error) {
+            return { answer: `Conversion error: ${error.message}`, cached: false, handler: 'unit' }
+        }
+    },
+
+    // Acronym decoder
+    acronym: async (query) => {
+        const abbr = query.replace(/acronym\./i, '').split('.').join(' ')
+        const prompt = `What does the acronym "${abbr}" stand for? Provide the most common meaning in one sentence.`
+        return await callAI(prompt, 'acronym')
+    },
+
+    // Quick reminders/tips
+    tip: async (query) => {
+        const topic = query.replace(/tip\./i, '').split('.').join(' ')
+        const prompt = `Give one practical tip about ${topic} in one sentence.`
+        return await callAI(prompt, 'tip')
     },
 
     // Weather (conceptual - would need real API)
@@ -99,7 +147,32 @@ const handlers = {
     },
 
     help: () => {
-        const commands = 'Commands: calc math translate code ip weather fact define stats help'
+        const commands = 'Commands: calc translate code timezone convert spell onthisday unit acronym tip weather fact define stats help'
         return { answer: commands, cached: false, handler: 'help' }
+    }
+}
+
+async function callAI(prompt, category = 'general') {
+    try {
+        const result = await ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 100
+            }
+        })
+        const answer = result.text || 'No response generated.'
+        if (answer.length > CONFIG.MAX_RESPONSE_LENGTH) {
+            answer = answer.substring(0, CONFIG.MAX_RESPONSE_LENGTH - 3) + '...'
+        }
+
+        stats.byCategory[category] = (stats.byCategory[category] || 0) + 1
+
+        return { answer, cached: false, handler: 'ai' }
+    } catch (error) {
+        console.log(`AI API Error: ${error.message}`)
+        stats.errors++
+        throw error
     }
 }
