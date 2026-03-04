@@ -1,8 +1,8 @@
-# 🚀 Enhanced AI-Powered DNS Server
+# 🚀 AI-Powered DNS Server
 
 An advanced DNS server that uses AI to answer questions, perform calculations, translations, and more through DNS TXT records.
 
-## ✨ New Features
+## ✨ Features
 
 ### 1. **Intelligent Caching**
 
